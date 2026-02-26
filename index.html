@@ -8,23 +8,32 @@
         .navbar{ position:fixed; top:0; left:0; width:100%; background:#1e293b; padding:12px 30px; display:flex; gap:30px; z-index:1000; }
         .navbar a{ color:white; text-decoration:none; font-weight:600; }
         h2{ color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:10px; margin-top:60px; }
+        
+        /* Table Styling */
         table{ border-collapse:collapse; width:100%; margin-top:20px; }
         th,td{ border:1px solid #dfe6e9; padding:12px; text-align:left; }
-        th{ background-color:#3498db; color:white; font-size:13px; }
+        th{ background-color:#3498db; color:white; font-size:13px; text-transform: uppercase; }
         tr:hover{ background-color: #f1f1f1; cursor: pointer; }
         
         /* Status Colors */
-        .status-pending { color: #f39c12; font-weight: bold; }
-        .status-approved { color: #27ae60; font-weight: bold; }
-        .status-rejected { color: #e74c3c; font-weight: bold; }
+        .status-pending { color: #f39c12; font-weight: bold; background: #fef5e7; padding: 4px 8px; border-radius: 4px; }
+        .status-approved { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 4px 8px; border-radius: 4px; }
+        .status-rejected { color: #e74c3c; font-weight: bold; background: #fdeaea; padding: 4px 8px; border-radius: 4px; }
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 40%; border-radius: 12px; text-align: center; position: relative; }
-        .modal-img { width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; }
-        .btn-approve { background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-reject { background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .close-btn { position: absolute; top: 10px; right: 20px; font-size: 24px; cursor: pointer; }
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow-y: auto; }
+        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 450px; border-radius: 12px; text-align: center; position: relative; box-shadow: 0 5px 30px rgba(0,0,0,0.3); }
+        .modal-img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; background: #eee; }
+        
+        .details-grid { text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .details-grid div { margin-bottom: 5px; font-size: 14px; }
+        .label { font-weight: bold; color: #7f8c8d; display: block; font-size: 11px; text-transform: uppercase; }
+        
+        .btn-approve { background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
+        .btn-reject { background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #95a5a6; }
+        .close-btn:hover { color: #2c3e50; }
     </style>
 </head>
 <body>
@@ -36,7 +45,7 @@
 
 <div class="container">
     <h2>Fuel Request Management</h2>
-    <p><small><i>* Click on any row to Approve or Reject the request.</i></small></p>
+    <p><small><i>* Click on a row to view full details and manage approval.</i></small></p>
 
     <table id="dataTable">
         <thead>
@@ -51,26 +60,35 @@
                 <th>Status</th>
             </tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+            <tr><td colspan="8" style="text-align:center;">Loading data...</td></tr>
+        </tbody>
     </table>
 </div>
 
+<!-- Enhanced Approval Modal -->
 <div id="statusModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h3>Review Fuel Request</h3>
-        <hr>
-        <div id="modalDetails" style="text-align: left; line-height: 1.6;"></div>
-        <img id="modalImg" class="modal-img" src="" alt="No Image Available">
-        <div style="margin-top: 20px;">
-            <button class="btn-approve" onclick="submitStatus('Approved')">Approve Request</button>
-            <button class="btn-reject" onclick="submitStatus('Rejected')">Reject Request</button>
+        <h3 style="margin-top:0; color:#2c3e50;">Review Request</h3>
+        <hr style="border:0; border-top:1px solid #eee;">
+        
+        <div class="details-grid" id="modalDetails">
+            <!-- Details will be injected here -->
+        </div>
+
+        <span class="label">Receipt Preview</span>
+        <img id="modalImg" class="modal-img" src="" alt="Receipt Image">
+        
+        <div class="btn-group">
+            <button class="btn-approve" onclick="submitStatus('Approved')">Approve</button>
+            <button class="btn-reject" onclick="submitStatus('Rejected')">Reject</button>
         </div>
     </div>
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwdy3zJlxQO_kFijZZAmqdoLWB8qT8Kk84G3ELOAXtcSRlJ_xoIf7gLgoqHTcFT06nj/exec'; // PASTE YOUR URL HERE
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwdy3zJlxQO_kFijZZAmqdoLWB8qT8Kk84G3ELOAXtcSRlJ_xoIf7gLgoqHTcFT06nj/exec';
     let allData = [];
     let currentRowIndex = null;
 
@@ -80,6 +98,9 @@
             .then(data => {
                 allData = data.slice(1);
                 renderTable(allData);
+            })
+            .catch(err => {
+                document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load data. Please check connection.</td></tr>`;
             });
     }
 
@@ -89,16 +110,20 @@
 
         data.forEach((row, index) => {
             let tr = document.createElement("tr");
-            let sheetIndex = index + 2; // +1 for 0-index, +1 for header row
+            let sheetIndex = index + 2; 
             tr.onclick = () => openModal(row, sheetIndex);
 
             row.forEach((cell, i) => {
                 let td = document.createElement("td");
-                if (i === 6) { // Receipt Column
-                    td.innerHTML = cell ? `<span style="color:#3498db; font-size:12px;">View Receipt</span>` : "No Image";
-                } else if (i === 7) { // Status Column
+                if (i === 6) { 
+                    td.innerHTML = cell ? `<span style="color:#3498db; font-weight:600;">View</span>` : "No Image";
+                } else if (i === 7) { 
                     let status = cell || "Pending";
                     td.innerHTML = `<span class="status-${status.toLowerCase()}">${status}</span>`;
+                } else if (i === 5) {
+                    // Format date for better table readability
+                    let d = new Date(cell);
+                    td.textContent = isNaN(d.getTime()) ? cell : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 } else {
                     td.textContent = cell;
                 }
@@ -110,16 +135,34 @@
 
     function openModal(row, sheetIndex) {
         currentRowIndex = sheetIndex;
+        
+        // Formatting the date for the modal
+        let formattedDate = "N/A";
+        if(row[5]) {
+            let d = new Date(row[5]);
+            formattedDate = isNaN(d.getTime()) ? row[5] : d.toLocaleString();
+        }
+
+        // Injecting ALL details into the grid
         document.getElementById("modalDetails").innerHTML = `
-            <strong>Request ID:</strong> ${row[0]} <br>
-            <strong>Driver:</strong> ${row[1]} <br>
-            <strong>Lorry:</strong> ${row[2]} <br>
-            <strong>Liters Requested:</strong> ${row[4]}
+            <div><span class="label">Request ID</span><strong>${row[0] || 'N/A'}</strong></div>
+            <div><span class="label">Date & Time</span><strong>${formattedDate}</strong></div>
+            <div><span class="label">Driver Name</span><strong>${row[1] || 'N/A'}</strong></div>
+            <div><span class="label">Lorry Number</span><strong>${row[2] || 'N/A'}</strong></div>
+            <div><span class="label">Current Mileage</span><strong>${row[3] || '0'} KM</strong></div>
+            <div><span class="label">Required Liters</span><strong>${row[4] || '0'} L</strong></div>
+            <div><span class="label">Current Status</span><strong class="status-${(row[7] || 'Pending').toLowerCase()}">${row[7] || 'Pending'}</strong></div>
         `;
 
+        // Handle Image Preview
         const idMatch = row[6] ? row[6].match(/[-\w]{25,}/) : null;
-        document.getElementById("modalImg").src = idMatch ? 
-            `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w600` : "https://via.placeholder.com/400x300?text=No+Receipt+Found";
+        if (idMatch) {
+            document.getElementById("modalImg").src = `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w600`;
+            document.getElementById("modalImg").style.display = "block";
+        } else {
+            document.getElementById("modalImg").src = "";
+            document.getElementById("modalImg").style.display = "none";
+        }
         
         document.getElementById("statusModal").style.display = "block";
     }
@@ -128,9 +171,24 @@
         document.getElementById("statusModal").style.display = "none";
     }
 
+    // Close modal if user clicks outside of it
+    window.onclick = function(event) {
+        let modal = document.getElementById("statusModal");
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
     function submitStatus(status) {
         if(!confirm("Update status to " + status + "?")) return;
         
+        // Visual feedback
+        const btnApprove = document.querySelector('.btn-approve');
+        const btnReject = document.querySelector('.btn-reject');
+        btnApprove.disabled = true;
+        btnReject.disabled = true;
+        btnApprove.innerText = "Processing...";
+
         const params = new URLSearchParams();
         params.append('action', 'updateStatus');
         params.append('row', currentRowIndex);
@@ -139,14 +197,21 @@
         fetch(scriptURL, { 
             method: 'POST', 
             body: params,
-            mode: 'no-cors' // Use no-cors for simple App Script triggers
+            mode: 'no-cors' 
         })
         .then(() => {
-            alert("Success!");
+            alert("Record successfully " + status);
             closeModal();
-            loadData(); // Refresh list
+            loadData(); 
         })
-        .catch(err => alert("Error updating status."));
+        .catch(err => {
+            alert("Error updating status.");
+        })
+        .finally(() => {
+            btnApprove.disabled = false;
+            btnReject.disabled = false;
+            btnApprove.innerText = "Approve";
+        });
     }
 
     loadData();
