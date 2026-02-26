@@ -9,8 +9,37 @@
         .navbar a{ color:white; text-decoration:none; font-weight:600; }
         h2{ color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:10px; margin-top:60px; }
         
+        /* Filter Section */
+        .filter-section {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border: 1px solid #dfe6e9;
+        }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-group label { font-size: 13px; font-weight: 600; color: #636e72; }
+        .filter-group input, .filter-group select { 
+            padding: 8px; 
+            border: 1px solid #dfe6e9; 
+            border-radius: 4px; 
+            outline: none;
+        }
+        .btn-reset { 
+            background: #95a5a6; 
+            color: white; 
+            padding: 8px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 13px;
+        }
+
         /* Table Styling */
-        table{ border-collapse:collapse; width:100%; margin-top:20px; }
+        table{ border-collapse:collapse; width:100%; margin-top:10px; }
         th,td{ border:1px solid #dfe6e9; padding:12px; text-align:left; }
         th{ background-color:#3498db; color:white; font-size:13px; text-transform: uppercase; }
         tr:hover{ background-color: #f1f1f1; cursor: pointer; }
@@ -66,7 +95,27 @@
 
 <div class="container">
     <h2>Fuel Request Management</h2>
-    <p><small><i>* Click on a row to view full details and manage approval.</i></small></p>
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <label>Date:</label>
+            <input type="date" id="filterDate" onchange="applyFilters()">
+        </div>
+        <div class="filter-group">
+            <label>Status:</label>
+            <select id="filterStatus" onchange="applyFilters()">
+                <option value="All">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+            </select>
+        </div>
+        <button class="btn-reset" onclick="resetFilters()">Reset to Today</button>
+        <div style="margin-left: auto; color: #95a5a6; font-size: 12px;">
+            * Pending items are shown at the top.
+        </div>
+    </div>
 
     <table id="dataTable">
         <thead>
@@ -106,7 +155,7 @@
     </div>
 </div>
 
-<!-- Success/Result Modal (The "Attractive" Popup) -->
+<!-- Success/Result Modal -->
 <div id="resultModal" class="modal">
     <div class="modal-content">
         <div id="resultIcon" class="success-icon">✓</div>
@@ -117,28 +166,83 @@
 
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwdy3zJlxQO_kFijZZAmqdoLWB8qT8Kk84G3ELOAXtcSRlJ_xoIf7gLgoqHTcFT06nj/exec';
-    let allData = [];
+    let rawData = []; // Store raw data with original row indices
     let currentRowIndex = null;
+
+    // Set default date to today on load
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('filterDate').value = today;
+        loadData();
+    };
 
     function loadData() {
         fetch(scriptURL)
             .then(res => res.json())
             .then(data => {
-                allData = data.slice(1);
-                renderTable(allData);
+                // Map data to objects containing original sheet row index
+                // data.slice(1) skips header. +2 because it's 1-indexed and we skipped row 1.
+                rawData = data.slice(1).map((row, index) => {
+                    return { values: row, sheetIndex: index + 2 };
+                });
+                applyFilters();
             })
             .catch(err => {
                 document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load data.</td></tr>`;
             });
     }
 
-    function renderTable(data) {
+    function applyFilters() {
+        const filterDate = document.getElementById('filterDate').value;
+        const filterStatus = document.getElementById('filterStatus').value;
+
+        let filtered = rawData.filter(item => {
+            const row = item.values;
+            const rowDate = row[5] ? new Date(row[5]).toISOString().split('T')[0] : "";
+            const rowStatus = row[7] || "Pending";
+
+            const dateMatch = !filterDate || rowDate === filterDate;
+            const statusMatch = filterStatus === "All" || rowStatus === filterStatus;
+
+            return dateMatch && statusMatch;
+        });
+
+        // SORTING: Pending first, then by date descending
+        filtered.sort((a, b) => {
+            const statusA = (a.values[7] || "Pending");
+            const statusB = (b.values[7] || "Pending");
+
+            if (statusA === "Pending" && statusB !== "Pending") return -1;
+            if (statusA !== "Pending" && statusB === "Pending") return 1;
+
+            // Secondary sort: Date (newest first)
+            return new Date(b.values[5]) - new Date(a.values[5]);
+        });
+
+        renderTable(filtered);
+    }
+
+    function resetFilters() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('filterDate').value = today;
+        document.getElementById('filterStatus').value = "All";
+        applyFilters();
+    }
+
+    function renderTable(dataArray) {
         const tableBody = document.querySelector("#dataTable tbody");
         tableBody.innerHTML = "";
 
-        data.forEach((row, index) => {
+        if (dataArray.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No requests found for this filter.</td></tr>`;
+            return;
+        }
+
+        dataArray.forEach((item) => {
+            const row = item.values;
+            const sheetIndex = item.sheetIndex;
+
             let tr = document.createElement("tr");
-            let sheetIndex = index + 2; 
             tr.onclick = () => openModal(row, sheetIndex);
 
             row.forEach((cell, i) => {
@@ -228,7 +332,7 @@
         
         btnApprove.disabled = true;
         btnReject.disabled = true;
-        const originalText = status === 'Approved' ? btnApprove.innerText : btnReject.innerText;
+        
         if(status === 'Approved') btnApprove.innerText = "Processing...";
         else btnReject.innerText = "Processing...";
 
@@ -257,8 +361,6 @@
             btnReject.innerText = "Reject";
         });
     }
-
-    loadData();
 </script>
 
 </body>
