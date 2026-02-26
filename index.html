@@ -22,18 +22,39 @@
 
         /* Modal Styles */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow-y: auto; }
-        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 450px; border-radius: 12px; text-align: center; position: relative; box-shadow: 0 5px 30px rgba(0,0,0,0.3); }
+        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 450px; border-radius: 12px; text-align: center; position: relative; box-shadow: 0 5px 30px rgba(0,0,0,0.3); animation: slideDown 0.3s ease-out; }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
         .modal-img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; background: #eee; }
         
         .details-grid { text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
         .details-grid div { margin-bottom: 5px; font-size: 14px; }
         .label { font-weight: bold; color: #7f8c8d; display: block; font-size: 11px; text-transform: uppercase; }
         
-        .btn-approve { background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
-        .btn-reject { background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
+        .btn-approve { background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.2s; }
+        .btn-reject { background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.2s; }
+        .btn-approve:hover { background: #219150; }
+        .btn-reject:hover { background: #c0392b; }
+        
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #95a5a6; }
-        .close-btn:hover { color: #2c3e50; }
+
+        /* Success Result Modal */
+        #resultModal .modal-content { width: 320px; padding: 40px 20px; margin-top: 10%; }
+        .success-icon { width: 80px; height: 80px; background: #27ae60; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 40px; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .error-icon { background: #e74c3c; }
+        
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+
+        .result-text { font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 20px; }
+        .btn-ok { background: #34495e; color: white; padding: 10px 30px; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -66,24 +87,31 @@
     </table>
 </div>
 
-<!-- Enhanced Approval Modal -->
+<!-- Main Approval Modal -->
 <div id="statusModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
         <h3 style="margin-top:0; color:#2c3e50;">Review Request</h3>
         <hr style="border:0; border-top:1px solid #eee;">
         
-        <div class="details-grid" id="modalDetails">
-            <!-- Details will be injected here -->
-        </div>
+        <div class="details-grid" id="modalDetails"></div>
 
         <span class="label">Receipt Preview</span>
         <img id="modalImg" class="modal-img" src="" alt="Receipt Image">
         
         <div class="btn-group">
-            <button class="btn-approve" onclick="submitStatus('Approved')">Approve</button>
-            <button class="btn-reject" onclick="submitStatus('Rejected')">Reject</button>
+            <button class="btn-approve" id="btnApprove" onclick="submitStatus('Approved')">Approve</button>
+            <button class="btn-reject" id="btnReject" onclick="submitStatus('Rejected')">Reject</button>
         </div>
+    </div>
+</div>
+
+<!-- Success/Result Modal (The "Attractive" Popup) -->
+<div id="resultModal" class="modal">
+    <div class="modal-content">
+        <div id="resultIcon" class="success-icon">✓</div>
+        <div id="resultMsg" class="result-text">Action Successful!</div>
+        <button class="btn-ok" onclick="closeResultModal()">OK</button>
     </div>
 </div>
 
@@ -100,7 +128,7 @@
                 renderTable(allData);
             })
             .catch(err => {
-                document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load data. Please check connection.</td></tr>`;
+                document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load data.</td></tr>`;
             });
     }
 
@@ -121,7 +149,6 @@
                     let status = cell || "Pending";
                     td.innerHTML = `<span class="status-${status.toLowerCase()}">${status}</span>`;
                 } else if (i === 5) {
-                    // Format date for better table readability
                     let d = new Date(cell);
                     td.textContent = isNaN(d.getTime()) ? cell : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 } else {
@@ -135,15 +162,8 @@
 
     function openModal(row, sheetIndex) {
         currentRowIndex = sheetIndex;
-        
-        // Formatting the date for the modal
-        let formattedDate = "N/A";
-        if(row[5]) {
-            let d = new Date(row[5]);
-            formattedDate = isNaN(d.getTime()) ? row[5] : d.toLocaleString();
-        }
+        let formattedDate = row[5] ? new Date(row[5]).toLocaleString() : "N/A";
 
-        // Injecting ALL details into the grid
         document.getElementById("modalDetails").innerHTML = `
             <div><span class="label">Request ID</span><strong>${row[0] || 'N/A'}</strong></div>
             <div><span class="label">Date & Time</span><strong>${formattedDate}</strong></div>
@@ -154,14 +174,13 @@
             <div><span class="label">Current Status</span><strong class="status-${(row[7] || 'Pending').toLowerCase()}">${row[7] || 'Pending'}</strong></div>
         `;
 
-        // Handle Image Preview
         const idMatch = row[6] ? row[6].match(/[-\w]{25,}/) : null;
+        const imgEl = document.getElementById("modalImg");
         if (idMatch) {
-            document.getElementById("modalImg").src = `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w600`;
-            document.getElementById("modalImg").style.display = "block";
+            imgEl.src = `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w600`;
+            imgEl.style.display = "block";
         } else {
-            document.getElementById("modalImg").src = "";
-            document.getElementById("modalImg").style.display = "none";
+            imgEl.style.display = "none";
         }
         
         document.getElementById("statusModal").style.display = "block";
@@ -171,23 +190,47 @@
         document.getElementById("statusModal").style.display = "none";
     }
 
-    // Close modal if user clicks outside of it
+    function showResult(type, message) {
+        const icon = document.getElementById("resultIcon");
+        const msg = document.getElementById("resultMsg");
+        
+        if(type === 'Approved') {
+            icon.innerHTML = "✓";
+            icon.className = "success-icon";
+            msg.innerText = "Request Approved!";
+        } else if(type === 'Rejected') {
+            icon.innerHTML = "✕";
+            icon.className = "success-icon error-icon";
+            msg.innerText = "Request Rejected!";
+        } else {
+            icon.innerHTML = "!";
+            icon.className = "success-icon error-icon";
+            msg.innerText = message;
+        }
+        
+        document.getElementById("resultModal").style.display = "block";
+    }
+
+    function closeResultModal() {
+        document.getElementById("resultModal").style.display = "none";
+    }
+
     window.onclick = function(event) {
-        let modal = document.getElementById("statusModal");
-        if (event.target == modal) {
+        if (event.target.className === "modal") {
             closeModal();
+            closeResultModal();
         }
     }
 
     function submitStatus(status) {
-        if(!confirm("Update status to " + status + "?")) return;
+        const btnApprove = document.getElementById('btnApprove');
+        const btnReject = document.getElementById('btnReject');
         
-        // Visual feedback
-        const btnApprove = document.querySelector('.btn-approve');
-        const btnReject = document.querySelector('.btn-reject');
         btnApprove.disabled = true;
         btnReject.disabled = true;
-        btnApprove.innerText = "Processing...";
+        const originalText = status === 'Approved' ? btnApprove.innerText : btnReject.innerText;
+        if(status === 'Approved') btnApprove.innerText = "Processing...";
+        else btnReject.innerText = "Processing...";
 
         const params = new URLSearchParams();
         params.append('action', 'updateStatus');
@@ -200,17 +243,18 @@
             mode: 'no-cors' 
         })
         .then(() => {
-            alert("Record successfully " + status);
             closeModal();
+            showResult(status);
             loadData(); 
         })
         .catch(err => {
-            alert("Error updating status.");
+            showResult('error', "Update failed. Try again.");
         })
         .finally(() => {
             btnApprove.disabled = false;
             btnReject.disabled = false;
             btnApprove.innerText = "Approve";
+            btnReject.innerText = "Reject";
         });
     }
 
