@@ -22,11 +22,22 @@
         .input-transition {
             transition: all 0.2s ease-in-out;
         }
+
+        /* Modal Animation */
+        .modal-enter {
+            animation: modalIn 0.3s ease-out forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
     </style>
 </head>
 
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
 
+    <!-- Main Form Container -->
     <div class="w-full max-w-md glass-morphism rounded-2xl shadow-2xl p-6 sm:p-8">
         <div class="text-center mb-6 sm:mb-8">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Fuel Request</h1>
@@ -95,8 +106,25 @@
             </button>
         </form>
 
-        <!-- Status Message Box -->
+        <!-- Status Message Box (For Errors/Loading) -->
         <div id="status" class="hidden mt-6 p-4 rounded-lg text-center font-medium transition-opacity"></div>
+    </div>
+
+    <!-- Success Modal (Popup) -->
+    <div id="successModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center modal-enter">
+            <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Success!</h2>
+            <p class="text-slate-600 mb-8">Your fuel request has been sent successfully to the office.</p>
+            <button onclick="closeModal()" 
+                class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-all active:scale-95">
+                Great, thanks!
+            </button>
+        </div>
     </div>
 
     <script>
@@ -106,6 +134,7 @@
         const form = document.getElementById('fuelForm');
         const status = document.getElementById('status');
         const btn = document.getElementById('submitBtn');
+        const modal = document.getElementById('successModal');
 
         // Handle Form Submission
         form.addEventListener('submit', e => {
@@ -126,7 +155,8 @@
 
             fetch(scriptURL, { method: 'POST', body: formData })
                 .then(response => {
-                    showStatus("✅ Request Sent Successfully!", "bg-green-100 text-green-700 border border-green-200");
+                    status.classList.add('hidden'); // Hide status message
+                    openModal(); // Show popup
                     resetForm();
                 })
                 .catch(error => {
@@ -136,15 +166,20 @@
                 });
         });
 
+        function openModal() {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
         function resetForm() {
             form.reset();
             btn.disabled = false;
             btn.innerHTML = "Submit Request";
-            
-            // Optional: Hide status message after 5 seconds
-            setTimeout(() => {
-                status.classList.add('hidden');
-            }, 5000);
         }
 
         function showStatus(msg, classes) {
