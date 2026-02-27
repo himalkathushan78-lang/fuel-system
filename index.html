@@ -1,367 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Fuel System - Admin Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel Request System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body{ font-family:'Segoe UI',sans-serif; margin:20px; background-color:#f4f7f6; }
-        .container{ max-width:1200px; margin:auto; background:white; padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
-        .navbar{ position:fixed; top:0; left:0; width:100%; background:#1e293b; padding:12px 30px; display:flex; gap:30px; z-index:1000; }
-        .navbar a{ color:white; text-decoration:none; font-weight:600; }
-        h2{ color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:10px; margin-top:60px; }
-        
-        /* Filter Section */
-        .filter-section {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            border: 1px solid #dfe6e9;
-        }
-        .filter-group { display: flex; align-items: center; gap: 8px; }
-        .filter-group label { font-size: 13px; font-weight: 600; color: #636e72; }
-        .filter-group input, .filter-group select { 
-            padding: 8px; 
-            border: 1px solid #dfe6e9; 
-            border-radius: 4px; 
-            outline: none;
-        }
-        .btn-reset { 
-            background: #95a5a6; 
-            color: white; 
-            padding: 8px 15px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 13px;
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Table Styling */
-        table{ border-collapse:collapse; width:100%; margin-top:10px; }
-        th,td{ border:1px solid #dfe6e9; padding:12px; text-align:left; }
-        th{ background-color:#3498db; color:white; font-size:13px; text-transform: uppercase; }
-        tr:hover{ background-color: #f1f1f1; cursor: pointer; }
-        
-        /* Status Colors */
-        .status-pending { color: #f39c12; font-weight: bold; background: #fef5e7; padding: 4px 8px; border-radius: 4px; }
-        .status-approved { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 4px 8px; border-radius: 4px; }
-        .status-rejected { color: #e74c3c; font-weight: bold; background: #fdeaea; padding: 4px 8px; border-radius: 4px; }
-
-        /* Modal Styles */
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow-y: auto; }
-        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 450px; border-radius: 12px; text-align: center; position: relative; box-shadow: 0 5px 30px rgba(0,0,0,0.3); animation: slideDown 0.3s ease-out; }
-        
-        @keyframes slideDown {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        /* Automatically capitalize lorry number input */
+        .uppercase-input {
+            text-transform: uppercase;
         }
 
-        .modal-img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; background: #eee; }
-        
-        .details-grid { text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
-        .details-grid div { margin-bottom: 5px; font-size: 14px; }
-        .label { font-weight: bold; color: #7f8c8d; display: block; font-size: 11px; text-transform: uppercase; }
-        
-        .btn-approve { background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.2s; }
-        .btn-reject { background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.2s; }
-        .btn-approve:hover { background: #219150; }
-        .btn-reject:hover { background: #c0392b; }
-        
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #95a5a6; }
-
-        /* Success Result Modal */
-        #resultModal .modal-content { width: 320px; padding: 40px 20px; margin-top: 10%; }
-        .success-icon { width: 80px; height: 80px; background: #27ae60; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 40px; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .error-icon { background: #e74c3c; }
-        
-        @keyframes popIn {
-            0% { transform: scale(0); }
-            100% { transform: scale(1); }
+        /* Smooth transitions for interactive elements */
+        .input-transition {
+            transition: all 0.2s ease-in-out;
         }
-
-        .result-text { font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 20px; }
-        .btn-ok { background: #34495e; color: white; padding: 10px 30px; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
-<body>
 
-<div class="navbar">
-    <a href="index.html">Fuel Request Form</a>
-    <a href="table.html" style="color:#38bdf8">Admin List</a>
-</div>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
 
-<div class="container">
-    <h2>Fuel Request Management</h2>
+    <div class="w-full max-w-md glass-morphism rounded-2xl shadow-2xl p-6 sm:p-8">
+        <div class="text-center mb-6 sm:mb-8">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Fuel Request</h1>
+            <p class="text-slate-500 text-sm sm:text-base">Please fill in the details for verification</p>
+        </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-section">
-        <div class="filter-group">
-            <label>Date:</label>
-            <input type="date" id="filterDate" onchange="applyFilters()">
-        </div>
-        <div class="filter-group">
-            <label>Status:</label>
-            <select id="filterStatus" onchange="applyFilters()">
-                <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-            </select>
-        </div>
-        <button class="btn-reset" onclick="resetFilters()">Reset to Today</button>
-        <div style="margin-left: auto; color: #95a5a6; font-size: 12px;">
-            * Pending items are shown at the top.
-        </div>
+        <form id="fuelForm" class="space-y-4 sm:space-y-5">
+            <!-- Driver ID -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Driver ID</label>
+                <input type="text" name="DriverID" list="driverList" required placeholder="e.g. DRV-9921"
+                    class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none input-transition">
+                <datalist id="driverList">
+                    <option value="D100-Mr.Saman">
+                    <option value="D101">
+                    <option value="D102">
+                    <option value="D103">
+                    <option value="D104">
+                    <option value="D105">
+                </datalist>
+            </div>
+
+            <!-- Lorry Number -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Lorry Number</label>
+                <input type="text" name="LorryNumber" list="lorryList" required placeholder="e.g. LP-4452"
+                    class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none uppercase-input input-transition">
+                <datalist id="lorryList">
+                    <option value="LP-4452">
+                    <option value="LP-7788">
+                    <option value="LP-2211">
+                    <option value="LP-9988">
+                    <option value="LP-5522">
+                </datalist>
+            </div>
+
+            <!-- Mileage and Liters (Grid Layout) -->
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Vehicle Mileage</label>
+                    <input type="number" name="Mileage" required placeholder="KM"
+                        class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none input-transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Liters Needed</label>
+                    <input type="number" name="RequiredLiters" required placeholder="Liters"
+                        class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none input-transition">
+                </div>
+            </div>
+
+            <!-- Verification Checkbox -->
+            <div class="flex items-start mt-4">
+                <div class="flex items-center h-5">
+                    <input type="checkbox" id="verifyCheck" required
+                        class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                </div>
+                <label for="verifyCheck" class="ml-3 text-sm text-slate-700 cursor-pointer">
+                    I confirm the above information is correct
+                </label>
+            </div>
+           
+            <!-- Submit Button -->
+            <button type="submit" id="submitBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 flex items-center justify-center">
+                Submit Request
+            </button>
+        </form>
+
+        <!-- Status Message Box -->
+        <div id="status" class="hidden mt-6 p-4 rounded-lg text-center font-medium transition-opacity"></div>
     </div>
 
-    <table id="dataTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Driver</th>
-                <th>Lorry</th>
-                <th>Mileage</th>
-                <th>Liters</th>
-                <th>Date</th>
-                <th>Receipt</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="8" style="text-align:center;">Loading data...</td></tr>
-        </tbody>
-    </table>
-</div>
+    <script>
+        // Google Apps Script Web App URL
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbymR-hZ79XBDK65aA8Fd9EGJQ3VVf0hSXXS2HLp_hjE84jKsYFj9H_1KdXEIV6W4wuz/exec';
 
-<!-- Main Approval Modal -->
-<div id="statusModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h3 style="margin-top:0; color:#2c3e50;">Review Request</h3>
-        <hr style="border:0; border-top:1px solid #eee;">
-        
-        <div class="details-grid" id="modalDetails"></div>
+        const form = document.getElementById('fuelForm');
+        const status = document.getElementById('status');
+        const btn = document.getElementById('submitBtn');
 
-        <span class="label">Receipt Preview</span>
-        <img id="modalImg" class="modal-img" src="" alt="Receipt Image">
-        
-        <div class="btn-group">
-            <button class="btn-approve" id="btnApprove" onclick="submitStatus('Approved')">Approve</button>
-            <button class="btn-reject" id="btnReject" onclick="submitStatus('Rejected')">Reject</button>
-        </div>
-    </div>
-</div>
+        // Handle Form Submission
+        form.addEventListener('submit', e => {
+            e.preventDefault();
 
-<!-- Success/Result Modal -->
-<div id="resultModal" class="modal">
-    <div class="modal-content">
-        <div id="resultIcon" class="success-icon">✓</div>
-        <div id="resultMsg" class="result-text">Action Successful!</div>
-        <button class="btn-ok" onclick="closeResultModal()">OK</button>
-    </div>
-</div>
+            // Visual feedback for loading state
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...`;
 
-<script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwdy3zJlxQO_kFijZZAmqdoLWB8qT8Kk84G3ELOAXtcSRlJ_xoIf7gLgoqHTcFT06nj/exec';
-    let rawData = []; // Store raw data with original row indices
-    let currentRowIndex = null;
+            showStatus("Sending request to office...", "bg-blue-50 text-blue-700 border border-blue-100");
 
-    // Set default date to today on load
-    window.onload = function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('filterDate').value = today;
-        loadData();
-    };
+            const formData = new FormData(form);
 
-    function loadData() {
-        fetch(scriptURL)
-            .then(res => res.json())
-            .then(data => {
-                // Map data to objects containing original sheet row index
-                // data.slice(1) skips header. +2 because it's 1-indexed and we skipped row 1.
-                rawData = data.slice(1).map((row, index) => {
-                    return { values: row, sheetIndex: index + 2 };
+            fetch(scriptURL, { method: 'POST', body: formData })
+                .then(response => {
+                    showStatus("✅ Request Sent Successfully!", "bg-green-100 text-green-700 border border-green-200");
+                    resetForm();
+                })
+                .catch(error => {
+                    showStatus("❌ Error: " + error.message, "bg-red-100 text-red-700 border border-red-200");
+                    btn.disabled = false;
+                    btn.innerHTML = "Try Again";
                 });
-                applyFilters();
-            })
-            .catch(err => {
-                document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load data.</td></tr>`;
-            });
-    }
-
-    function applyFilters() {
-        const filterDate = document.getElementById('filterDate').value;
-        const filterStatus = document.getElementById('filterStatus').value;
-
-        let filtered = rawData.filter(item => {
-            const row = item.values;
-            const rowDate = row[5] ? new Date(row[5]).toISOString().split('T')[0] : "";
-            const rowStatus = row[7] || "Pending";
-
-            const dateMatch = !filterDate || rowDate === filterDate;
-            const statusMatch = filterStatus === "All" || rowStatus === filterStatus;
-
-            return dateMatch && statusMatch;
         });
 
-        // SORTING: Pending first, then by date descending
-        filtered.sort((a, b) => {
-            const statusA = (a.values[7] || "Pending");
-            const statusB = (b.values[7] || "Pending");
-
-            if (statusA === "Pending" && statusB !== "Pending") return -1;
-            if (statusA !== "Pending" && statusB === "Pending") return 1;
-
-            // Secondary sort: Date (newest first)
-            return new Date(b.values[5]) - new Date(a.values[5]);
-        });
-
-        renderTable(filtered);
-    }
-
-    function resetFilters() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('filterDate').value = today;
-        document.getElementById('filterStatus').value = "All";
-        applyFilters();
-    }
-
-    function renderTable(dataArray) {
-        const tableBody = document.querySelector("#dataTable tbody");
-        tableBody.innerHTML = "";
-
-        if (dataArray.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No requests found for this filter.</td></tr>`;
-            return;
+        function resetForm() {
+            form.reset();
+            btn.disabled = false;
+            btn.innerHTML = "Submit Request";
+            
+            // Optional: Hide status message after 5 seconds
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 5000);
         }
 
-        dataArray.forEach((item) => {
-            const row = item.values;
-            const sheetIndex = item.sheetIndex;
-
-            let tr = document.createElement("tr");
-            tr.onclick = () => openModal(row, sheetIndex);
-
-            row.forEach((cell, i) => {
-                let td = document.createElement("td");
-                if (i === 6) { 
-                    td.innerHTML = cell ? `<span style="color:#3498db; font-weight:600;">View</span>` : "No Image";
-                } else if (i === 7) { 
-                    let status = cell || "Pending";
-                    td.innerHTML = `<span class="status-${status.toLowerCase()}">${status}</span>`;
-                } else if (i === 5) {
-                    let d = new Date(cell);
-                    td.textContent = isNaN(d.getTime()) ? cell : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                } else {
-                    td.textContent = cell;
-                }
-                tr.appendChild(td);
-            });
-            tableBody.appendChild(tr);
-        });
-    }
-
-    function openModal(row, sheetIndex) {
-        currentRowIndex = sheetIndex;
-        let formattedDate = row[5] ? new Date(row[5]).toLocaleString() : "N/A";
-
-        document.getElementById("modalDetails").innerHTML = `
-            <div><span class="label">Request ID</span><strong>${row[0] || 'N/A'}</strong></div>
-            <div><span class="label">Date & Time</span><strong>${formattedDate}</strong></div>
-            <div><span class="label">Driver Name</span><strong>${row[1] || 'N/A'}</strong></div>
-            <div><span class="label">Lorry Number</span><strong>${row[2] || 'N/A'}</strong></div>
-            <div><span class="label">Current Mileage</span><strong>${row[3] || '0'} KM</strong></div>
-            <div><span class="label">Required Liters</span><strong>${row[4] || '0'} L</strong></div>
-            <div><span class="label">Current Status</span><strong class="status-${(row[7] || 'Pending').toLowerCase()}">${row[7] || 'Pending'}</strong></div>
-        `;
-
-        const idMatch = row[6] ? row[6].match(/[-\w]{25,}/) : null;
-        const imgEl = document.getElementById("modalImg");
-        if (idMatch) {
-            imgEl.src = `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w600`;
-            imgEl.style.display = "block";
-        } else {
-            imgEl.style.display = "none";
+        function showStatus(msg, classes) {
+            status.innerHTML = msg;
+            status.className = "mt-6 p-4 rounded-lg text-center font-medium " + classes;
+            status.classList.remove('hidden');
         }
-        
-        document.getElementById("statusModal").style.display = "block";
-    }
-
-    function closeModal() {
-        document.getElementById("statusModal").style.display = "none";
-    }
-
-    function showResult(type, message) {
-        const icon = document.getElementById("resultIcon");
-        const msg = document.getElementById("resultMsg");
-        
-        if(type === 'Approved') {
-            icon.innerHTML = "✓";
-            icon.className = "success-icon";
-            msg.innerText = "Request Approved!";
-        } else if(type === 'Rejected') {
-            icon.innerHTML = "✕";
-            icon.className = "success-icon error-icon";
-            msg.innerText = "Request Rejected!";
-        } else {
-            icon.innerHTML = "!";
-            icon.className = "success-icon error-icon";
-            msg.innerText = message;
-        }
-        
-        document.getElementById("resultModal").style.display = "block";
-    }
-
-    function closeResultModal() {
-        document.getElementById("resultModal").style.display = "none";
-    }
-
-    window.onclick = function(event) {
-        if (event.target.className === "modal") {
-            closeModal();
-            closeResultModal();
-        }
-    }
-
-    function submitStatus(status) {
-        const btnApprove = document.getElementById('btnApprove');
-        const btnReject = document.getElementById('btnReject');
-        
-        btnApprove.disabled = true;
-        btnReject.disabled = true;
-        
-        if(status === 'Approved') btnApprove.innerText = "Processing...";
-        else btnReject.innerText = "Processing...";
-
-        const params = new URLSearchParams();
-        params.append('action', 'updateStatus');
-        params.append('row', currentRowIndex);
-        params.append('status', status);
-
-        fetch(scriptURL, { 
-            method: 'POST', 
-            body: params,
-            mode: 'no-cors' 
-        })
-        .then(() => {
-            closeModal();
-            showResult(status);
-            loadData(); 
-        })
-        .catch(err => {
-            showResult('error', "Update failed. Try again.");
-        })
-        .finally(() => {
-            btnApprove.disabled = false;
-            btnReject.disabled = false;
-            btnApprove.innerText = "Approve";
-            btnReject.innerText = "Reject";
-        });
-    }
-</script>
-
+    </script>
 </body>
+
 </html>
