@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel Request System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Essential for Kodular WebView to allow internal scrolling */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .uppercase-input { text-transform: uppercase; }
+        
+        /* Smooth scrolling for the whole page */
+        html { scroll-behavior: smooth; }
+
+        /* Hide scrollbar for cleaner app look */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+
+<body class="block">
+
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900 text-white shadow-md h-14">
+        <div class="flex items-center h-full px-4 overflow-x-auto no-scrollbar">
+            <div class="flex gap-6">
+                <a href="index.html" class="whitespace-nowrap text-slate-400 text-xs font-bold uppercase">Admin</a>
+                <a href="operatornavi.html" class="whitespace-nowrap text-slate-400 text-xs font-bold uppercase">Operator</a>
+                <a href="tank.html" class="whitespace-nowrap text-slate-400 text-xs font-bold uppercase">Analysis</a>
+                <a href="formnavi.html" class="whitespace-nowrap text-blue-400 border-b-2 border-blue-400 pb-1 text-xs font-bold uppercase">Request</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="w-full max-w-md mx-auto px-4 pt-20 pb-[60vh]">
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6">
+            <div class="mb-6">
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Fuel Request</h1>
+                <p class="text-slate-500 text-sm">Fill all fields to proceed.</p>
+            </div>
+
+            <form id="fuelForm" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-black text-slate-500 mb-1 uppercase tracking-widest">Driver ID</label>
+                    <input type="text" name="DriverID" list="driverList" required placeholder="Select Driver"
+                        class="w-full px-4 py-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none text-base transition-all">
+                    <datalist id="driverList">
+                        <option value="D100-Mr.Saman">
+                        <option value="D101">
+                        <option value="D102">
+                    </datalist>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black text-slate-500 mb-1 uppercase tracking-widest">Lorry Number</label>
+                    <input type="text" name="LorryNumber" list="lorryList" required placeholder="e.g. LP-4452"
+                        class="w-full px-4 py-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none uppercase-input text-base transition-all">
+                    <datalist id="lorryList">
+                        <option value="LP-4452">
+                        <option value="LP-7788">
+                    </datalist>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-black text-slate-500 mb-1 uppercase tracking-widest">Mileage</label>
+                        <input type="number" name="Mileage" required placeholder="KM"
+                            class="w-full px-4 py-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none text-base transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-500 mb-1 uppercase tracking-widest">Liters</label>
+                        <input type="number" name="RequiredLiters" required placeholder="QTY"
+                            class="w-full px-4 py-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none text-base transition-all">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <input type="checkbox" id="verifyCheck" required class="w-6 h-6 rounded border-blue-300">
+                    <label for="verifyCheck" class="text-sm font-bold text-blue-900">I confirm details are correct</label>
+                </div>
+               
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-blue-600 text-white font-black py-5 rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-transform text-center uppercase tracking-widest">
+                    Submit Request
+                </button>
+            </form>
+
+            <div id="status" class="hidden mt-4 p-4 rounded-xl text-center text-sm font-bold"></div>
+        </div>
+    </div>
+
+    <div id="successModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 hidden">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-xl font-black text-slate-800 mb-6">SENT!</h2>
+            <button onclick="location.reload()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold">DISMISS</button>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxLe3Xkyrdu12FnWqKnl7IO5jOvtqMKnIhy8madK1-ohiqcnlou2-GQH6abp1UFXIoq/exec';
+        const form = document.getElementById('fuelForm');
+        const btn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.innerText = "SENDING...";
+
+            fetch(scriptURL, { method: 'POST', body: new FormData(form) })
+                .then(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                })
+                .catch(err => {
+                    alert("Error!");
+                    btn.disabled = false;
+                    btn.innerText = "TRY AGAIN";
+                });
+        });
+
+        // AUTO-SCROLL FIX:
+        // This moves the input field to the top of the screen when clicked
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>

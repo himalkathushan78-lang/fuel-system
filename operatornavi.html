@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel System - Operator Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s ease-out forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen font-sans text-slate-900 pb-12">
+
+    <!-- Navigation Bar -->
+        <nav class="sticky top-0 z-40 bg-slate-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex gap-4 sm:gap-8">
+                    <a href="index.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Admin Portal</a>
+                    <a href="operatornavi.html" class="text-blue-400 border-b-2 border-blue-400 pb-1 text-sm font-medium">Operator Portal</a>
+                      <a href="tank.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Analysis</a>
+                    <a href="formnavi.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Request Form</a>
+                  
+
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Fuel Pump Terminal</h1>
+                
+            </div>
+            
+            <!-- Quick Filter Bar -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                    <label class="text-xs font-bold uppercase text-slate-400">Date</label>
+                    <input type="date" id="filterDate" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none">
+                </div>
+                <div class="bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                    <label class="text-xs font-bold uppercase text-slate-400">Task</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none font-medium">
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                        <option value="All" selected>All History</option>
+                    </select>
+                </div>
+                <button onclick="resetFilters()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="glass-morphism rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dataTable">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ID</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Lorry</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Liters</th>
+                            <!-- Hidden on Mobile -->
+                            <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">Appr. Status</th>
+                            <!-- Visible on Mobile -->
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Filling Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">Syncing with server...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal (Popup Menu) -->
+    <div id="statusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 modal-enter">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Recording Filling</h2>
+                    <p class="text-sm text-slate-500" id="modalTimestamp">--/--/---- --:--</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Full Details in Popup -->
+            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100" id="modalDetails">
+                <!-- Details injected here -->
+            </div>
+
+            <div class="space-y-4" id="actionArea">
+                
+                <button id="btnComplete" onclick="submitFilling('Completed')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-100 transition-all transform active:scale-95 flex items-center justify-center">
+                    Confirm Filling Complete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal (Popup) -->
+    <div id="successPopup" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center modal-enter">
+            <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Recorded!</h2>
+            <br><br>
+            <button onclick="closeSuccessModal()" 
+                class="w-full bg-teal-800 hover:bg-teal-900 text-white font-bold py-4 rounded-xl transition-all active:scale-95">
+                Back to List
+            </button>
+        </div>
+    </div>
+
+    <!-- Error Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all transform translate-y-20 opacity-0 pointer-events-none">
+        <span id="toastMsg">Error!</span>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxLe3Xkyrdu12FnWqKnl7IO5jOvtqMKnIhy8madK1-ohiqcnlou2-GQH6abp1UFXIoq/exec';
+        let rawData = []; 
+        let currentRowIndex = null;
+        let headers = [];
+
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            loadData();
+        };
+
+        function loadData() {
+            fetch(scriptURL)
+                .then(res => res.json())
+                .then(data => {
+                    headers = data[0].map(h => h.toString().trim());
+                    rawData = data.slice(1).map((row, index) => {
+                        return { values: row, sheetIndex: index + 2 };
+                    });
+                    applyFilters();
+                })
+                .catch(err => {
+                    document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500">Sync Error. Refresh page.</td></tr>`;
+                });
+        }
+
+        function applyFilters() {
+            const filterDate = document.getElementById('filterDate').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            const tsIdx = headers.findIndex(h => h.toLowerCase() === "timestamp");
+            const adminStatusIdx = headers.indexOf("Status");
+            const fillStatusIdx = headers.indexOf("Filled Status");
+
+            let filtered = rawData.filter(item => {
+                const row = item.values;
+                const rowDate = row[tsIdx] ? new Date(row[tsIdx]).toISOString().split('T')[0] : "";
+                const rowFillStatus = row[fillStatusIdx] || "Pending";
+                const rowAdminStatus = row[adminStatusIdx] || "Pending";
+
+                // Security: Operator ONLY sees Approved items
+                if (rowAdminStatus !== "Approved") return false;
+
+                const dateMatch = !filterDate || rowDate === filterDate;
+                const statusMatch = filterStatus === "All" || rowFillStatus === filterStatus;
+
+                return dateMatch && statusMatch;
+            });
+
+            // Sort: Pending first
+            filtered.sort((a, b) => {
+                const sA = a.values[fillStatusIdx] || "Pending";
+                const sB = b.values[fillStatusIdx] || "Pending";
+                if (sA === "Pending" && sB !== "Pending") return -1;
+                if (sA !== "Pending" && sB === "Pending") return 1;
+                return new Date(b.values[tsIdx]) - new Date(a.values[tsIdx]);
+            });
+
+            renderTable(filtered);
+        }
+
+        function resetFilters() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            document.getElementById('filterStatus').value = "All"; 
+            applyFilters();
+        }
+
+        function renderTable(dataArray) {
+            const tableBody = document.querySelector("#dataTable tbody");
+            tableBody.innerHTML = "";
+
+            if (dataArray.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 font-medium">No approved tasks found.</td></tr>`;
+                return;
+            }
+
+            const idx = {
+                id: headers.indexOf("ID"),
+                driver: headers.indexOf("DriverID"),
+                lorry: headers.indexOf("LorryNumber"),
+                liters: headers.indexOf("RequiredLiters"),
+                adminStatus: headers.indexOf("Status"),
+                fillStatus: headers.indexOf("Filled Status")
+            };
+
+            dataArray.forEach((item) => {
+                const row = item.values;
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition-colors cursor-pointer group border-b border-slate-100 last:border-0";
+                tr.onclick = () => openModal(row, item.sheetIndex);
+
+                const fillStatus = row[idx.fillStatus] || "Pending";
+                const adminStatus = row[idx.adminStatus] || "Pending";
+
+                tr.innerHTML = `
+                    <td class="px-4 sm:px-6 py-4 font-bold text-slate-700">#${row[idx.id] || '-'}</td>
+                    <td class="px-4 sm:px-6 py-4 text-slate-600">${row[idx.driver] || '-'}</td>
+                    <td class="px-4 sm:px-6 py-4 text-slate-600 font-medium uppercase">${row[idx.lorry] || '-'}</td>
+                    <td class="px-4 sm:px-6 py-4 text-slate-500 font-medium">${row[idx.liters] || '0'} L</td>
+                    <td class="px-6 py-4 hidden md:table-cell text-blue-600 font-bold text-xs uppercase">${adminStatus}</td>
+                    <td class="px-4 sm:px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${getStatusColor(fillStatus)}">
+                            ${fillStatus}
+                        </span>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function getStatusColor(status) {
+            switch(status.toLowerCase()) {
+                case 'completed': return 'bg-teal-100 text-teal-700';
+                case 'rejected': return 'bg-red-100 text-red-700';
+                default: return 'bg-amber-100 text-amber-700';
+            }
+        }
+
+        function openModal(row, sheetIndex) {
+            currentRowIndex = sheetIndex;
+            const idx = {
+                ts: headers.findIndex(h => h.toLowerCase() === "timestamp"),
+                id: headers.indexOf("ID"),
+                driver: headers.indexOf("DriverID"),
+                lorry: headers.indexOf("LorryNumber"),
+                mileage: headers.indexOf("Mileage"),
+                liters: headers.indexOf("RequiredLiters"),
+                fillStatus: headers.indexOf("Filled Status")
+            };
+
+            const timestamp = row[idx.ts] ? new Date(row[idx.ts]).toLocaleString() : "N/A";
+            document.getElementById("modalTimestamp").innerText = timestamp;
+
+            const isCompleted = (row[idx.fillStatus] === 'Completed');
+
+            document.getElementById("modalDetails").innerHTML = `
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lorry</p>
+                    <p class="font-bold text-slate-800 uppercase text-lg">${row[idx.lorry]}</p>
+                </div>
+                <div class="space-y-1 text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Required Fuel</p>
+                    <p class="font-bold text-teal-600 text-xl">${row[idx.liters]} Liters</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Request ID</p>
+                    <p class="font-medium text-slate-700">#${row[idx.id]}</p>
+                </div>
+                <div class="space-y-1 text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver</p>
+                    <p class="font-medium text-slate-700">${row[idx.driver]}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mileage</p>
+                    <p class="font-medium text-slate-700">${row[idx.mileage]} KM</p>
+                </div>
+                <div class="space-y-1 text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filling Status</p>
+                    <p class="font-bold ${getStatusColor(row[idx.fillStatus] || 'Pending').split(' ')[1]}">${row[idx.fillStatus] || 'Pending'}</p>
+                </div>
+            `;
+
+            // Hide action button if task is already done
+            document.getElementById("actionArea").classList.toggle('hidden', isCompleted);
+            
+            document.getElementById("statusModal").classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById("statusModal").classList.add('hidden');
+        }
+
+        function openSuccessModal() {
+            document.getElementById("successPopup").classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById("successPopup").classList.add('hidden');
+        }
+
+        function showToast(type, msg) {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMsg");
+            toastMsg.innerText = msg;
+            
+            const baseClasses = "fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all transform translate-y-0 opacity-100";
+            const colorClass = "bg-red-600";
+            
+            toast.className = `${baseClasses} ${colorClass}`;
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        function submitFilling(status) {
+            const btn = document.getElementById('btnComplete');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+            const params = new URLSearchParams();
+            params.append('action', 'updateFilledStatus'); 
+            params.append('row', currentRowIndex);
+            params.append('status', status);
+
+            fetch(scriptURL, { method: 'POST', body: params, mode: 'no-cors' })
+            .then(() => {
+                closeModal();
+                openSuccessModal(); 
+                loadData(); 
+            })
+            .catch(err => {
+                showToast('error', "Update failed. Check connection.");
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = "Confirm Filling Complete";
+            });
+        }
+    </script>
+</body>
+</html>

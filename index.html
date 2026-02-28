@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel System - Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .success-icon-anim {
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen font-sans text-slate-900 pb-12">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-40 bg-slate-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex gap-4 sm:gap-8">
+                    <a href="index.html" class="text-blue-400 border-b-2 border-blue-400 pb-1 text-sm font-medium">Admin Portal</a>
+                    <a href="operatornavi.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Operator Portal</a>
+                     <a href="tank.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Analysis</a>
+                    <a href="formnavi.html" class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Request Form</a>
+                   
+
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Fuel Request Management</h1>
+            </div>
+            
+            <!-- Quick Filter Bar -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                    <label class="text-xs font-bold uppercase text-slate-400">Date</label>
+                    <input type="date" id="filterDate" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none">
+                </div>
+                <div class="bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                    <label class="text-xs font-bold uppercase text-slate-400">Approval</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none font-medium">
+                        <option value="All">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <button onclick="resetFilters()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="glass-morphism rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dataTable">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ID</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">Lorry</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">Mileage</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">Liters</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Approval Status</th>
+                            <th class="px-4 sm:px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Filled Status</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden sm:table-cell">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400">Loading request data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="statusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 modal-enter">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Review Fuel Request</h2>
+                    <p class="text-sm text-slate-500" id="modalTimestamp">Received on --/--/----</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100" id="modalDetails">
+                <!-- Details injected here -->
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="btnApprove" onclick="submitStatus('Approved')" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-100 transition-all transform active:scale-95 flex items-center justify-center">
+                    Approve
+                </button>
+                <button id="btnReject" onclick="submitStatus('Rejected')" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-100 transition-all transform active:scale-95 flex items-center justify-center">
+                    Reject
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modern Success/Feedback Modal -->
+    <div id="successModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md hidden">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center modal-enter">
+            <div id="successIconContainer" class="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center success-icon-anim">
+                <!-- Icon injected by JS -->
+            </div>
+            <h3 id="successTitle" class="text-2xl font-black text-slate-800 mb-2">Success!</h3>
+            <p id="successMessage" class="text-slate-500 mb-8 font-medium"></p>
+            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl transition-all shadow-lg active:scale-95">
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification (Fallback) -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all transform translate-y-20 opacity-0 pointer-events-none">
+        <span id="toastMsg">Action Successful!</span>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxLe3Xkyrdu12FnWqKnl7IO5jOvtqMKnIhy8madK1-ohiqcnlou2-GQH6abp1UFXIoq/exec';
+        let rawData = []; 
+        let currentRowIndex = null;
+        let headers = [];
+
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            loadData();
+        };
+
+        function loadData() {
+            fetch(scriptURL)
+                .then(res => res.json())
+                .then(data => {
+                    headers = data[0].map(h => h.toString().trim());
+                    rawData = data.slice(1).map((row, index) => {
+                        return { values: row, sheetIndex: index + 2 };
+                    });
+                    applyFilters();
+                })
+                .catch(err => {
+                    document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-red-500">Failed to load data. Please refresh.</td></tr>`;
+                });
+        }
+
+        function applyFilters() {
+            const filterDate = document.getElementById('filterDate').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            const tsIdx = headers.findIndex(h => h.toLowerCase() === "timestamp");
+            const statusIdx = headers.indexOf("Status");
+
+            let filtered = rawData.filter(item => {
+                const row = item.values;
+                const rowDate = row[tsIdx] ? new Date(row[tsIdx]).toISOString().split('T')[0] : "";
+                const rowStatus = row[statusIdx] || "Pending";
+                return (!filterDate || rowDate === filterDate) && (filterStatus === "All" || rowStatus === filterStatus);
+            });
+
+            filtered.sort((a, b) => {
+                const statusA = (a.values[statusIdx] || "Pending");
+                const statusB = (b.values[statusIdx] || "Pending");
+                if (statusA === "Pending" && statusB !== "Pending") return -1;
+                if (statusA !== "Pending" && statusB === "Pending") return 1;
+                return new Date(b.values[tsIdx]) - new Date(a.values[tsIdx]);
+            });
+
+            renderTable(filtered);
+        }
+
+        function resetFilters() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            document.getElementById('filterStatus').value = "All";
+            applyFilters();
+        }
+
+        function renderTable(dataArray) {
+            const tableBody = document.querySelector("#dataTable tbody");
+            tableBody.innerHTML = "";
+            if (dataArray.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 font-medium">No results found.</td></tr>`;
+                return;
+            }
+
+            const idx = {
+                id: headers.indexOf("ID"),
+                driver: headers.indexOf("DriverID"),
+                lorry: headers.indexOf("LorryNumber"),
+                mileage: headers.indexOf("Mileage"),
+                liters: headers.indexOf("RequiredLiters"),
+                status: headers.indexOf("Status"),
+                filled: headers.indexOf("Filled Status")
+            };
+
+            dataArray.forEach((item) => {
+                const row = item.values;
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition-colors cursor-pointer group border-b border-slate-100 last:border-0";
+                tr.onclick = () => openModal(row, item.sheetIndex);
+
+                const apprStatus = row[idx.status] || "Pending";
+                const fillStatus = row[idx.filled] || "Pending";
+
+                tr.innerHTML = `
+                    <td class="px-4 sm:px-6 py-4 font-bold text-slate-700">#${row[idx.id] || '-'}</td>
+                    <td class="px-4 sm:px-6 py-4 text-slate-600">${row[idx.driver] || '-'}</td>
+                    <td class="px-6 py-4 text-slate-600 font-medium uppercase hidden md:table-cell">${row[idx.lorry] || '-'}</td>
+                    <td class="px-6 py-4 text-slate-500 hidden md:table-cell">${row[idx.mileage] || '0'} KM</td>
+                    <td class="px-6 py-4 text-slate-500 hidden md:table-cell">${row[idx.liters] || '0'} L</td>
+                    <td class="px-4 sm:px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${getStatusColor(apprStatus)}">
+                            ${apprStatus}
+                        </span>
+                    </td>
+                    <td class="px-4 sm:px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${getStatusColor(fillStatus)}">
+                            ${fillStatus}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 hidden sm:table-cell text-right">
+                        <span class="text-blue-600 font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity">Review</span>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function getStatusColor(status) {
+            switch(status.toLowerCase()) {
+                case 'approved': return 'bg-green-100 text-green-700';
+                case 'rejected': return 'bg-red-100 text-red-700';
+                default: return 'bg-amber-100 text-amber-700';
+            }
+        }
+
+        function openModal(row, sheetIndex) {
+            currentRowIndex = sheetIndex;
+            const idx = {
+                ts: headers.findIndex(h => h.toLowerCase() === "timestamp"),
+                id: headers.indexOf("ID"),
+                driver: headers.indexOf("DriverID"),
+                lorry: headers.indexOf("LorryNumber"),
+                mileage: headers.indexOf("Mileage"),
+                liters: headers.indexOf("RequiredLiters"),
+                status: headers.indexOf("Status"),
+                filled: headers.indexOf("Filled Status")
+            };
+
+            const timestamp = row[idx.ts] ? new Date(row[idx.ts]).toLocaleString() : "N/A";
+            document.getElementById("modalTimestamp").innerText = `Request received on ${timestamp}`;
+
+            document.getElementById("modalDetails").innerHTML = `
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Request ID</p>
+                    <p class="font-bold text-slate-800">#${row[idx.id] || 'N/A'}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lorry Number</p>
+                    <p class="font-bold text-slate-800 uppercase">${row[idx.lorry] || 'N/A'}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Driver</p>
+                    <p class="font-bold text-slate-800">${row[idx.driver] || 'N/A'}</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fuel Needed</p>
+                    <p class="font-bold text-slate-800">${row[idx.liters] || '0'} Liters</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mileage</p>
+                    <p class="font-bold text-slate-800">${row[idx.mileage] || '0'} KM</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filling Status</p>
+                    <p class="font-bold text-slate-800 italic">${row[idx.filled] || 'Pending'}</p>
+                </div>
+                <div class="col-span-2 pt-2 border-t border-slate-200 mt-2">
+                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Approval</p>
+                     <p class="font-bold ${getStatusColor(row[idx.status] || 'Pending').split(' ')[1]}">${row[idx.status] || 'Pending'}</p>
+                </div>
+            `;
+            document.getElementById("statusModal").classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById("statusModal").classList.add('hidden');
+        }
+
+        function showSuccessModal(type, status) {
+            const modal = document.getElementById("successModal");
+            const iconContainer = document.getElementById("successIconContainer");
+            const title = document.getElementById("successTitle");
+            const msg = document.getElementById("successMessage");
+
+            if (status === 'Approved') {
+                iconContainer.className = "w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center success-icon-anim bg-green-100 text-green-600";
+                iconContainer.innerHTML = `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+                title.innerText = "Request Approved";
+                title.className = "text-2xl font-black text-green-600 mb-2";
+               
+            } else {
+                iconContainer.className = "w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center success-icon-anim bg-red-100 text-red-600";
+                iconContainer.innerHTML = `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                title.innerText = "Request Rejected";
+                title.className = "text-2xl font-black text-red-600 mb-2";
+               
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById("successModal").classList.add('hidden');
+        }
+
+        function showToast(type, msg) {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMsg");
+            toastMsg.innerText = msg;
+            const colorClass = type === 'success' ? "bg-slate-900" : "bg-red-600";
+            toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all transform translate-y-0 opacity-100 ${colorClass}`;
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none'); }, 3000);
+        }
+
+        function submitStatus(status) {
+            const btnApprove = document.getElementById('btnApprove');
+            const btnReject = document.getElementById('btnReject');
+            btnApprove.disabled = true;
+            btnReject.disabled = true;
+
+            const spinner = `<svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            if(status === 'Approved') btnApprove.innerHTML = spinner;
+            else btnReject.innerHTML = spinner;
+
+            const params = new URLSearchParams();
+            params.append('action', 'updateStatus');
+            params.append('row', currentRowIndex);
+            params.append('status', status);
+
+            fetch(scriptURL, { method: 'POST', body: params, mode: 'no-cors' })
+            .then(() => {
+                closeModal();
+                showSuccessModal('success', status);
+                loadData(); 
+            })
+            .catch(err => {
+                showToast('error', "Update failed. Check Script.");
+            })
+            .finally(() => {
+                btnApprove.disabled = false;
+                btnReject.disabled = false;
+                btnApprove.innerText = "Approve";
+                btnReject.innerText = "Reject";
+            });
+        }
+    </script>
+</body>
+</html>
