@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel System - Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .nav-active {
+            background-color: #3b82f6;
+            color: white !important;
+            font-weight: 700;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Pull to refresh styles */
+        body {
+            overscroll-behavior-y: contain; /* Prevents native chrome refresh */
+        }
+        #pull-indicator {
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen font-sans text-slate-900 pb-12">
+
+    <div id="pull-indicator" class="fixed top-0 left-0 w-full flex justify-center pt-16 opacity-0 pointer-events-none z-[60]">
+        <div class="bg-white p-3 rounded-full shadow-xl border border-slate-200 flex items-center justify-center">
+            <svg id="pull-icon" class="w-6 h-6 text-blue-600 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </div>
+    </div>
+
+    <nav class="sticky top-0 z-50 bg-slate-900 text-white shadow-xl w-full">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between py-3">
+                <div class="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full">
+                    <a href="index.html" class="nav-active px-4 py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap">Admin Portal</a>
+                    <a href="operatornavi.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Operator</a>
+                    <a href="tank.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Inventory</a>
+                    <a href="formnavi.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap text-nowrap">Requests</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 lg:mt-10">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-4xl font-black text-slate-800 tracking-tight">Fuel Requests</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">Manage and authorize vehicle refueling.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
+                <div class="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Date</label>
+                    <input type="date" id="filterDate" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none w-full font-bold">
+                </div>
+                <div class="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Approval</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none w-full font-bold">
+                        <option value="All">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <button onclick="loadData()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 sm:py-2 rounded-2xl text-sm font-black transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-morphism rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dataTable">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-200">
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">ID</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">Vehicle & Driver</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Station</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">Liters</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">Establishing connection...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="statusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-6 sm:p-10 modal-enter max-h-[95vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">Review Request</h2>
+                    <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight" id="modalTimestamp">Received --/--/----</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100" id="modalDetails"></div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="btnApprove" onclick="submitStatus('Approved')" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-green-100 transition-all active:scale-95 text-lg">Approve</button>
+                <button id="btnReject" onclick="submitStatus('Rejected')" class="flex-1 bg-white border-2 border-red-50 hover:border-red-100 text-red-600 font-black py-5 rounded-2xl transition-all active:scale-95 text-lg">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md hidden">
+        <div class="bg-white w-full max-w-xs rounded-[3rem] shadow-2xl p-10 text-center modal-enter">
+            <div id="successIconContainer" class="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"></div>
+            <h3 id="successTitle" class="text-2xl font-black text-slate-800 mb-6 tracking-tight">Updated!</h3>
+            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl transition-all">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwmYItD7fRU98E6bCjf3Hl_4ZpL75aDB2rRtpI96OIVRrhZpElhkpC1Y2jNrjQXjubR/exec';
+        const NOTIFY_USER_ID = "3118";
+        const NOTIFY_API_KEY = "pUj7jsXfXkzMu7isZVbK";
+        const OPERATOR_PHONE = "94742663624"; 
+
+        let rawData = []; 
+        let headers = [];
+        let currentRowIndex = null;
+        let currentModalData = null;
+
+        // --- PULL TO REFRESH LOGIC ---
+        let touchStart = 0;
+        let touchEnd = 0;
+        const pullThreshold = 150; 
+        const indicator = document.getElementById('pull-indicator');
+        const pullIcon = document.getElementById('pull-icon');
+
+        window.onload = function() {
+            document.getElementById('filterDate').value = new Date().toISOString().split('T')[0];
+            loadData();
+        };
+
+        window.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) touchStart = e.targetTouches[0].screenY;
+            else touchStart = 0;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (touchStart === 0) return;
+            touchEnd = e.targetTouches[0].screenY;
+            const distance = touchEnd - touchStart;
+
+            if (distance > 0 && window.scrollY === 0) {
+                const translate = Math.min(distance / 2.2, pullThreshold);
+                const opacity = Math.min(distance / pullThreshold, 1);
+                const rotation = Math.min((distance / pullThreshold) * 180, 180);
+                
+                indicator.style.opacity = opacity;
+                indicator.style.transform = `translateY(${translate}px)`;
+                pullIcon.style.transform = `rotate(${rotation}deg)`;
+                
+                if (distance > 10 && e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            const distance = touchEnd - touchStart;
+            if (distance >= pullThreshold && window.scrollY === 0) {
+                if (window.navigator.vibrate) window.navigator.vibrate(20);
+                loadData();
+                // Change icon temporarily to show "loading"
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>`;
+            }
+            indicator.style.opacity = '0';
+            indicator.style.transform = `translateY(0px)`;
+            setTimeout(() => {
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>`;
+                pullIcon.style.transform = `rotate(0deg)`;
+            }, 300);
+            touchStart = 0; touchEnd = 0;
+        });
+
+        // --- DATA LOGIC ---
+        function loadData() {
+            const tbody = document.querySelector("#dataTable tbody");
+            tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">Refreshing data...</td></tr>`;
+
+            fetch(scriptURL)
+                .then(res => res.json())
+                .then(data => {
+                    headers = data[0].map(h => h.toString().trim());
+                    rawData = data.slice(1).map((row, index) => ({ values: row, sheetIndex: index + 2 }));
+                    applyFilters();
+                })
+                .catch(() => {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-red-500 font-bold italic">Connection Error.</td></tr>`;
+                });
+        }
+
+        function applyFilters() {
+            const fDate = document.getElementById('filterDate').value;
+            const fStatus = document.getElementById('filterStatus').value;
+            const tsIdx = headers.findIndex(h => h.toLowerCase() === "timestamp");
+            const statusIdx = headers.indexOf("Status");
+
+            let filtered = rawData.filter(item => {
+                const rDate = item.values[tsIdx] ? new Date(item.values[tsIdx]).toISOString().split('T')[0] : "";
+                const rStatus = item.values[statusIdx] || "Pending";
+                return (!fDate || rDate === fDate) && (fStatus === "All" || rStatus === fStatus);
+            });
+
+            filtered.sort((a, b) => (a.values[statusIdx] === "Pending") ? -1 : 1);
+            renderTable(filtered);
+        }
+
+        function renderTable(dataArray) {
+            const tbody = document.querySelector("#dataTable tbody");
+            tbody.innerHTML = "";
+            if (dataArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">No requests found for this selection.</td></tr>`;
+                return;
+            }
+
+            const idx = {
+                id: headers.indexOf("ID"),
+                driver: headers.indexOf("DriverID"),
+                lorry: headers.indexOf("LorryNumber"),
+                mileage: headers.indexOf("Mileage"),
+                liters: headers.indexOf("RequiredLiters"),
+                status: headers.indexOf("Status"),
+                station: headers.indexOf("StationType")
+            };
+
+            dataArray.forEach(item => {
+                const row = item.values;
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50/80 cursor-pointer border-b border-slate-100 transition-colors";
+                tr.onclick = () => openModal(row, item.sheetIndex);
+
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-bold text-slate-800 text-sm">#${row[idx.id] || '-'}</td>
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col">
+                            <span class="text-slate-900 font-black uppercase text-sm leading-tight">${row[idx.lorry] || '-'}</span>
+                            <span class="text-slate-400 text-[11px] font-bold">${row[idx.driver] || '-'}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5 hidden md:table-cell">
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">${row[idx.station] || 'Internal'}</span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col">
+                            <span class="text-blue-600 font-black text-sm">${row[idx.liters] || '0'} L</span>
+                            <span class="text-[10px] text-slate-400 font-bold">${row[idx.mileage] || '0'} KM</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                        <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase ${getStatusColor(row[idx.status] || 'Pending')}">
+                            ${row[idx.status] || 'Pending'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getStatusColor(s) {
+            if (s === 'Approved') return 'bg-green-100 text-green-700';
+            if (s === 'Rejected') return 'bg-red-100 text-red-700';
+            return 'bg-amber-100 text-amber-700';
+        }
+
+        function openModal(row, sIndex) {
+            currentRowIndex = sIndex;
+            currentModalData = row;
+            const idx = {
+                ts: headers.findIndex(h => h.toLowerCase() === "timestamp"),
+                stn: headers.indexOf("StationType"),
+                mil: headers.indexOf("Mileage"),
+                lry: headers.indexOf("LorryNumber"),
+                ltr: headers.indexOf("RequiredLiters"),
+                drv: headers.indexOf("DriverID")
+            };
+
+            document.getElementById("modalTimestamp").innerText = `Received: ${row[idx.ts] ? new Date(row[idx.ts]).toLocaleString() : 'N/A'}`;
+            document.getElementById("modalDetails").innerHTML = `
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Station</p><p class="font-bold text-blue-600">${row[idx.stn] || 'Internal'}</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Mileage</p><p class="font-bold text-slate-800">${row[idx.mil] || '0'} KM</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Lorry</p><p class="font-black text-slate-800 uppercase">${row[idx.lry]}</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Fuel</p><p class="font-black text-teal-600">${row[idx.ltr]} L</p></div>
+                <div class="col-span-2 mt-2 pt-2 border-t border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase">Driver Info</p><p class="font-bold text-slate-700">${row[idx.drv]}</p></div>
+            `;
+            document.getElementById("statusModal").classList.remove('hidden');
+        }
+
+        function submitStatus(status) {
+            const btnA = document.getElementById('btnApprove');
+            const btnR = document.getElementById('btnReject');
+            btnA.disabled = btnR.disabled = true;
+            btnA.innerText = "Processing...";
+
+            const idx = { id: headers.indexOf("ID"), lry: headers.indexOf("LorryNumber"), ltr: headers.indexOf("RequiredLiters") };
+            
+            if (status === 'Approved') {
+                const msg = `Fuel Approved! ID: ${currentModalData[idx.id]}, Lorry: ${currentModalData[idx.lry]}, Qty: ${currentModalData[idx.ltr]}L.`;
+                const url = `https://app.notify.lk/api/v1/send?user_id=${NOTIFY_USER_ID}&api_key=${NOTIFY_API_KEY}&sender_id=NotifyDEMO&to=${OPERATOR_PHONE}&message=${encodeURIComponent(msg)}`;
+                fetch(url, { mode: 'no-cors' });
+            }
+
+            const p = new URLSearchParams();
+            p.append('action', 'updateStatus');
+            p.append('row', currentRowIndex);
+            p.append('status', status);
+
+            fetch(scriptURL, { method: 'POST', body: p, mode: 'no-cors' }).then(() => {
+                closeModal();
+                showSuccessModal(status);
+                loadData();
+            }).finally(() => {
+                btnA.disabled = btnR.disabled = false;
+                btnA.innerText = "Approve";
+            });
+        }
+
+        function showSuccessModal(status) {
+            const modal = document.getElementById("successModal");
+            const icon = document.getElementById("successIconContainer");
+            const title = document.getElementById("successTitle");
+            icon.className = `w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${status === 'Approved' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`;
+            icon.innerHTML = status === 'Approved' ? '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"/></svg>' : '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M6 18L18 6M6 6l12 12"/></svg>';
+            title.innerText = `Request ${status}`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById("statusModal").classList.add('hidden'); }
+        function closeSuccessModal() { document.getElementById("successModal").classList.add('hidden'); }
+        function resetFilters() { document.getElementById('filterStatus').value = "All"; applyFilters(); }
+    </script>
+</body>
+</html>

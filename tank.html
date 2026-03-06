@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel System - Analysis & Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .progress-bar-transition {
+            transition: width 1s ease-in-out, background-color 0.5s ease;
+        }
+
+        .nav-active {
+            background-color: #3b82f6;
+            color: white !important;
+            font-weight: 700;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Pull-to-refresh styles */
+        body {
+            overscroll-behavior-y: contain;
+        }
+        #pull-indicator {
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen font-sans text-slate-900 pb-12">
+
+    <div id="pull-indicator" class="fixed top-0 left-0 w-full flex justify-center pt-16 opacity-0 pointer-events-none z-[60]">
+        <div class="bg-white p-3 rounded-full shadow-xl border border-slate-200 flex items-center justify-center">
+            <svg id="pull-icon" class="w-6 h-6 text-blue-600 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </div>
+    </div>
+
+    <nav class="sticky top-0 z-50 bg-slate-900 text-white shadow-xl w-full">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between py-3">
+                <div class="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full">
+                    <a href="index.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Admin Portal</a>
+                    <a href="operatornavi.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Operator Portal</a>
+                    <a href="tank.html" class="nav-active px-4 py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap">Inventory Analysis</a>
+                    <a href="formnavi.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Request Form</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 sm:mt-10">
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl sm:text-4xl font-black text-slate-800 tracking-tight">Inventory Dashboard</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">Monitoring stock level vs consumption trends</p>
+            </div>
+            <button onclick="fetchData()" class="hidden sm:flex bg-white border border-slate-200 p-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+            <div class="glass-morphism p-6 rounded-[2rem] shadow-xl border-l-8 border-teal-500 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Tank Level</p>
+                    <div id="currentCapacity" class="text-3xl font-black text-slate-800">0.00 L</div>
+                </div>
+                <div class="mt-6">
+                    <div class="h-4 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                        <div id="tankProgress" class="h-full bg-teal-500 progress-bar-transition" style="width: 0%"></div>
+                    </div>
+                    <p id="tankPercent" class="text-[11px] text-slate-500 mt-2 font-bold italic">Calculating storage data...</p>
+                </div>
+            </div>
+
+            <div class="glass-morphism p-6 rounded-[2rem] shadow-xl border-l-8 border-orange-500">
+                <div class="flex flex-col gap-3 mb-4">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Internal Usage</p>
+                    <div class="flex items-center gap-1 w-full">
+                        <select id="intPeriod" onchange="updateUI('int')" class="text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none">
+                            <option value="day">Day</option>
+                            <option value="month">Month</option>
+                            <option value="year">Year</option>
+                        </select>
+                        <input type="date" id="intDay" onchange="calculateStats()" class="text-[10px] font-bold text-slate-600 outline-none bg-white border border-slate-200 rounded-lg px-2 py-2 flex-1 min-w-0">
+                        <select id="intMonth" onchange="calculateStats()" class="hidden text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none flex-1">
+                            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option>
+                            <option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option>
+                            <option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                        </select>
+                        <select id="intYear" onchange="calculateStats()" class="hidden text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none">
+                            <option value="2025">2025</option><option value="2026" selected>2026</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="dailyUsage" class="text-3xl font-black text-slate-800">0.00 L</div>
+                <p id="intSubtext" class="text-[11px] text-slate-500 mt-2 font-medium italic">Company pump withdrawals</p>
+            </div>
+
+            <div class="glass-morphism p-6 rounded-[2rem] shadow-xl border-l-8 border-blue-500 md:col-span-2 lg:col-span-1">
+                <div class="flex flex-col gap-3 mb-4">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Station Usage</p>
+                    <div class="flex items-center gap-1 w-full">
+                        <select id="extPeriod" onchange="updateUI('ext')" class="text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none">
+                            <option value="day">Day</option>
+                            <option value="month">Month</option>
+                            <option value="year">Year</option>
+                        </select>
+                        <input type="date" id="extDay" onchange="calculateStats()" class="text-[10px] font-bold text-slate-600 outline-none bg-white border border-slate-200 rounded-lg px-2 py-2 flex-1 min-w-0">
+                        <select id="extMonth" onchange="calculateStats()" class="hidden text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none flex-1">
+                            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option>
+                            <option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option>
+                            <option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                        </select>
+                        <select id="extYear" onchange="calculateStats()" class="hidden text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-2 outline-none">
+                            <option value="2025">2025</option><option value="2026" selected>2026</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="stationUsage" class="text-3xl font-black text-slate-800">0.00 L</div>
+                <p id="extSubtext" class="text-[11px] text-slate-500 mt-2 font-medium italic">External station billing</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1">
+                <div class="glass-morphism p-6 sm:p-8 rounded-[2rem] shadow-xl border border-slate-200 sticky top-24">
+                    <h3 class="text-xl font-black text-slate-800 mb-6">Refill Stock</h3>
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <input type="number" id="refillAmount" placeholder="0.00" class="w-full px-5 py-4 rounded-2xl border border-slate-200 outline-none text-xl font-black focus:ring-4 focus:ring-blue-100 transition-all">
+                            <span class="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-300">LITERS</span>
+                        </div>
+                        <button onclick="submitRefill()" id="btnUpdate" class="w-full bg-slate-900 hover:bg-black text-white font-black py-5 rounded-2xl shadow-xl transition-all active:scale-95 text-lg">Update Inventory</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="glass-morphism rounded-[2.5rem] shadow-xl overflow-hidden border border-slate-200">
+                    <div class="bg-slate-50/50 px-8 py-5 border-b border-slate-200">
+                        <h3 class="font-black text-slate-400 uppercase text-[10px] tracking-widest">Recent Refill History</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" id="inventoryTable">
+                            <thead>
+                                <tr class="text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
+                                    <th class="px-8 py-5">Date & Time</th>
+                                    <th class="px-8 py-5 text-right">Added Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr><td colspan="2" class="px-8 py-10 text-center text-slate-400 italic font-medium">Loading history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-xs rounded-[3rem] shadow-2xl p-10 text-center modal-enter">
+            <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-2">Updated!</h2>
+            <p class="text-slate-500 text-sm font-medium mb-8">Stock levels adjusted successfully.</p>
+            <button onclick="closeModal()" class="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95">Dismiss</button>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwmYItD7fRU98E6bCjf3Hl_4ZpL75aDB2rRtpI96OIVRrhZpElhkpC1Y2jNrjQXjubR/exec';
+        const INTERNAL_STATUS_KEY = "Completed";           
+        const EXTERNAL_STATUS_KEY = "Completed by Station"; 
+
+        let allRequests = [];
+        let allInventory = [];
+        let requestHeaders = [];
+
+        // --- PULL TO REFRESH LOGIC ---
+        let touchStart = 0;
+        let touchEnd = 0;
+        const pullThreshold = 150; 
+        const indicator = document.getElementById('pull-indicator');
+        const pullIcon = document.getElementById('pull-icon');
+
+        window.onload = function() {
+            const now = new Date();
+            document.getElementById('intDay').value = now.toISOString().split('T')[0];
+            document.getElementById('extDay').value = now.toISOString().split('T')[0];
+            document.getElementById('intMonth').value = now.getMonth();
+            document.getElementById('extMonth').value = now.getMonth();
+            fetchData();
+        };
+
+        window.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) touchStart = e.targetTouches[0].screenY;
+            else touchStart = 0;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (touchStart === 0) return;
+            touchEnd = e.targetTouches[0].screenY;
+            const distance = touchEnd - touchStart;
+            if (distance > 0 && window.scrollY === 0) {
+                const translate = Math.min(distance / 2.2, pullThreshold);
+                const opacity = Math.min(distance / pullThreshold, 1);
+                const rotation = Math.min((distance / pullThreshold) * 180, 180);
+                indicator.style.opacity = opacity;
+                indicator.style.transform = `translateY(${translate}px)`;
+                pullIcon.style.transform = `rotate(${rotation}deg)`;
+                if (distance > 10 && e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            const distance = touchEnd - touchStart;
+            if (distance >= pullThreshold && window.scrollY === 0) {
+                if (window.navigator.vibrate) window.navigator.vibrate(20);
+                fetchData();
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>`;
+            }
+            indicator.style.opacity = '0';
+            indicator.style.transform = `translateY(0px)`;
+            setTimeout(() => {
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>`;
+                pullIcon.style.transform = `rotate(0deg)`;
+            }, 300);
+            touchStart = 0; touchEnd = 0;
+        });
+
+        // --- DATA LOGIC ---
+        function updateUI(prefix) {
+            const period = document.getElementById(prefix + 'Period').value;
+            const dayInput = document.getElementById(prefix + 'Day');
+            const monthInput = document.getElementById(prefix + 'Month');
+            const yearInput = document.getElementById(prefix + 'Year');
+            const subtext = document.getElementById(prefix + 'Subtext');
+
+            dayInput.classList.toggle('hidden', period !== 'day');
+            monthInput.classList.toggle('hidden', period !== 'month');
+            yearInput.classList.toggle('hidden', period === 'day');
+
+            if (period === 'day') subtext.innerText = "Daily withdrawal record";
+            else if (period === 'month') subtext.innerText = "Total monthly summary";
+            else subtext.innerText = "Annual consumption total";
+
+            calculateStats();
+        }
+
+        function fetchData() {
+            fetch(`${scriptURL}?type=analysis`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.requests) {
+                        requestHeaders = data.requests[0];
+                        allRequests = data.requests.slice(1);
+                    }
+                    if (data.inventory) {
+                        allInventory = data.inventory.slice(1);
+                    }
+                    calculateStats();
+                    renderInventoryTable();
+                });
+        }
+
+        function calculateStats() {
+            const idxAmount = requestHeaders.indexOf("RequiredLiters");
+            const idxFilledStatus = requestHeaders.indexOf("Filled Status");
+            const idxTimestamp = requestHeaders.indexOf("timestamp");
+
+            if (idxAmount === -1 || idxFilledStatus === -1) return;
+
+            const totalRefills = allInventory.reduce((sum, row) => sum + (parseFloat(row[1]) || 0), 0);
+            const totalConsumedInternal = allRequests.reduce((sum, row) => {
+                if (String(row[idxFilledStatus] || "").trim().toLowerCase() === INTERNAL_STATUS_KEY.toLowerCase()) {
+                    return sum + (parseFloat(row[idxAmount]) || 0);
+                }
+                return sum;
+            }, 0);
+
+            const balance = totalRefills - totalConsumedInternal;
+            document.getElementById('currentCapacity').innerText = balance.toLocaleString(undefined, {minimumFractionDigits: 2}) + " L";
+
+            const usageInt = getSum('int', INTERNAL_STATUS_KEY, idxAmount, idxTimestamp, idxFilledStatus);
+            const usageExt = getSum('ext', EXTERNAL_STATUS_KEY, idxAmount, idxTimestamp, idxFilledStatus);
+
+            document.getElementById('dailyUsage').innerText = usageInt.toLocaleString(undefined, {minimumFractionDigits: 2}) + " L";
+            document.getElementById('stationUsage').innerText = usageExt.toLocaleString(undefined, {minimumFractionDigits: 2}) + " L";
+
+            const bar = document.getElementById('tankProgress');
+            const cap = totalRefills > 0 ? totalRefills : 5000; 
+            const pct = Math.max(0, Math.min((balance / cap) * 100, 100));
+            bar.style.width = pct + "%";
+            document.getElementById('tankPercent').innerText = `Stock: ${balance.toFixed(1)}L (${pct.toFixed(1)}%)`;
+            
+            if(pct < 15) bar.className = "h-full bg-red-500 progress-bar-transition";
+            else if(pct < 40) bar.className = "h-full bg-orange-500 progress-bar-transition";
+            else bar.className = "h-full bg-teal-500 progress-bar-transition";
+        }
+
+        function getSum(prefix, statusKey, amtIdx, tsIdx, statIdx) {
+            const period = document.getElementById(prefix + 'Period').value;
+            const targetDay = document.getElementById(prefix + 'Day').value;
+            const targetMonth = document.getElementById(prefix + 'Month').value;
+            const targetYear = document.getElementById(prefix + 'Year').value;
+
+            return allRequests.reduce((sum, row) => {
+                if (String(row[statIdx] || "").trim().toLowerCase() !== statusKey.toLowerCase()) return sum;
+                if (!row[tsIdx]) return sum;
+
+                const d = new Date(row[tsIdx]);
+                const rowDay = d.toISOString().split('T')[0];
+                const rowMonth = d.getMonth().toString();
+                const rowYear = d.getFullYear().toString();
+
+                let match = false;
+                if (period === 'day') match = (rowDay === targetDay);
+                else if (period === 'month') match = (rowMonth === targetMonth && rowYear === targetYear);
+                else if (period === 'year') match = (rowYear === targetYear);
+
+                return match ? sum + (parseFloat(row[amtIdx]) || 0) : sum;
+            }, 0);
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.querySelector("#inventoryTable tbody");
+            tbody.innerHTML = "";
+            if(allInventory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="px-8 py-10 text-center text-slate-400 italic font-medium">No history found.</td></tr>`;
+                return;
+            }
+            [...allInventory].reverse().slice(0, 10).forEach(row => {
+                const d = new Date(row[0]).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="px-8 py-5 text-xs font-bold text-slate-600">${d}</td>
+                    <td class="px-8 py-5 text-right text-sm font-black text-teal-600">+ ${parseFloat(row[1]).toFixed(0)} L</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function submitRefill() {
+            const val = document.getElementById('refillAmount').value;
+            if (!val || val <= 0) return;
+            const btn = document.getElementById('btnUpdate');
+            btn.disabled = true;
+            btn.innerHTML = `↻ Processing...`;
+            const p = new URLSearchParams();
+            p.append('action', 'addInventory');
+            p.append('amount', val);
+            fetch(scriptURL, { method: 'POST', body: p, mode: 'no-cors' }).then(() => {
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('refillAmount').value = "";
+                fetchData(); 
+            }).finally(() => {
+                btn.disabled = false;
+                btn.innerText = "Update Inventory";
+            });
+        }
+
+        function closeModal() { document.getElementById('successModal').classList.add('hidden'); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel System - Operator Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .nav-active {
+            background-color: #3b82f6;
+            color: white !important;
+            font-weight: 700;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Pull-to-refresh styles */
+        body {
+            overscroll-behavior-y: contain;
+        }
+        #pull-indicator {
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen font-sans text-slate-900 pb-12">
+
+    <div id="pull-indicator" class="fixed top-0 left-0 w-full flex justify-center pt-16 opacity-0 pointer-events-none z-[60]">
+        <div class="bg-white p-3 rounded-full shadow-xl border border-slate-200 flex items-center justify-center">
+            <svg id="pull-icon" class="w-6 h-6 text-teal-600 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </div>
+    </div>
+
+    <nav class="sticky top-0 z-50 bg-slate-900 text-white shadow-xl w-full">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between py-3">
+                <div class="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full">
+                    <a href="index.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Admin Portal</a>
+                    <a href="operatornavi.html" class="nav-active px-4 py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap">Operator Portal</a>
+                    <a href="tank.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Inventory</a>
+                    <a href="formnavi.html" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all whitespace-nowrap">Request Form</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 lg:mt-10">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-4xl font-black text-slate-800 tracking-tight">Pump Terminal</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">Confirmed approvals ready for filling.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
+                <div class="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Select Date</label>
+                    <input type="date" id="filterDate" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none w-full font-bold">
+                </div>
+                <div class="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">View Task</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="outline-none text-sm bg-transparent border-none w-full font-bold">
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed Only</option>
+                        <option value="All" selected>All History</option>
+                    </select>
+                </div>
+                <button onclick="loadData()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 sm:py-2 rounded-2xl text-sm font-black transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-morphism rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dataTable">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-200">
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">ID</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">Vehicle & Driver</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400">Fuel & Mileage</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">Source</th>
+                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">Syncing with server...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="statusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-6 sm:p-10 modal-enter max-h-[95vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">Recording Filling</h2>
+                    <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight" id="modalTimestamp">--</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100" id="modalDetails"></div>
+            <div class="space-y-4" id="actionArea">
+                <button id="btnComplete" onclick="submitFilling('Completed')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-teal-100 transition-all active:scale-95 text-lg flex items-center justify-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Confirm Filling Complete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successPopup" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md hidden">
+        <div class="bg-white w-full max-w-xs rounded-[3rem] shadow-2xl p-10 text-center modal-enter">
+            <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-6">Recorded!</h2>
+            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl transition-all">Back to List</button>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwmYItD7fRU98E6bCjf3Hl_4ZpL75aDB2rRtpI96OIVRrhZpElhkpC1Y2jNrjQXjubR/exec';
+        let rawData = []; 
+        let headers = [];
+        let currentRowIndex = null;
+        const TARGET_STATION = "None"; 
+
+        // --- PULL TO REFRESH LOGIC ---
+        let touchStart = 0;
+        let touchEnd = 0;
+        const pullThreshold = 150; 
+        const indicator = document.getElementById('pull-indicator');
+        const pullIcon = document.getElementById('pull-icon');
+
+        window.onload = function() {
+            document.getElementById('filterDate').value = new Date().toISOString().split('T')[0];
+            loadData();
+        };
+
+        window.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) touchStart = e.targetTouches[0].screenY;
+            else touchStart = 0;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (touchStart === 0) return;
+            touchEnd = e.targetTouches[0].screenY;
+            const distance = touchEnd - touchStart;
+
+            if (distance > 0 && window.scrollY === 0) {
+                const translate = Math.min(distance / 2.2, pullThreshold);
+                const opacity = Math.min(distance / pullThreshold, 1);
+                const rotation = Math.min((distance / pullThreshold) * 180, 180);
+                
+                indicator.style.opacity = opacity;
+                indicator.style.transform = `translateY(${translate}px)`;
+                pullIcon.style.transform = `rotate(${rotation}deg)`;
+                
+                if (distance > 10 && e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            const distance = touchEnd - touchStart;
+            if (distance >= pullThreshold && window.scrollY === 0) {
+                if (window.navigator.vibrate) window.navigator.vibrate(20);
+                loadData();
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>`;
+            }
+            indicator.style.opacity = '0';
+            indicator.style.transform = `translateY(0px)`;
+            setTimeout(() => {
+                pullIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>`;
+                pullIcon.style.transform = `rotate(0deg)`;
+            }, 300);
+            touchStart = 0; touchEnd = 0;
+        });
+
+        // --- DATA LOGIC ---
+        function loadData() {
+            const tbody = document.querySelector("#dataTable tbody");
+            tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">Refreshing data...</td></tr>`;
+
+            fetch(scriptURL)
+                .then(res => res.json())
+                .then(data => {
+                    headers = data[0].map(h => h.toString().trim());
+                    rawData = data.slice(1).map((row, index) => ({ values: row, sheetIndex: index + 2 }));
+                    applyFilters();
+                })
+                .catch(() => {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-red-500 font-bold italic">Sync Error. Please check connection.</td></tr>`;
+                });
+        }
+
+        function applyFilters() {
+            const fDate = document.getElementById('filterDate').value;
+            const fStatus = document.getElementById('filterStatus').value;
+            const tsIdx = headers.findIndex(h => h.toLowerCase() === "timestamp");
+            const adminStatusIdx = headers.indexOf("Status");
+            const fillStatusIdx = headers.indexOf("Filled Status");
+            const stationIdx = headers.indexOf("StationType");
+
+            let filtered = rawData.filter(item => {
+                const row = item.values;
+                const rDate = row[tsIdx] ? new Date(row[tsIdx]).toISOString().split('T')[0] : "";
+                const rFillStatus = row[fillStatusIdx] || "Pending";
+                const rAdminStatus = row[adminStatusIdx] || "Pending";
+                const rStation = row[stationIdx] || "Internal";
+
+                if (rAdminStatus !== "Approved") return false;
+                if (TARGET_STATION !== "All" && rStation !== TARGET_STATION) return false;
+
+                const matchDate = !fDate || rDate === fDate;
+                const matchStatus = fStatus === "All" || rFillStatus === fStatus;
+                return matchDate && matchStatus;
+            });
+
+            filtered.sort((a, b) => {
+                const isDoneA = (a.values[fillStatusIdx] || "").toLowerCase().includes('completed');
+                const isDoneB = (b.values[fillStatusIdx] || "").toLowerCase().includes('completed');
+                if (!isDoneA && isDoneB) return -1;
+                if (isDoneA && !isDoneB) return 1;
+                return new Date(b.values[tsIdx]) - new Date(a.values[tsIdx]);
+            });
+            renderTable(filtered);
+        }
+
+        function renderTable(dataArray) {
+            const tbody = document.querySelector("#dataTable tbody");
+            tbody.innerHTML = "";
+            if (dataArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-slate-400 font-medium italic">No pending tasks for this selection.</td></tr>`;
+                return;
+            }
+
+            const idx = {
+                id: headers.indexOf("ID"),
+                drv: headers.indexOf("DriverID"),
+                lry: headers.indexOf("LorryNumber"),
+                ltr: headers.indexOf("RequiredLiters"),
+                mil: headers.indexOf("Mileage"),
+                stn: headers.indexOf("StationType"),
+                fill: headers.indexOf("Filled Status")
+            };
+
+            dataArray.forEach(item => {
+                const row = item.values;
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50/80 cursor-pointer border-b border-slate-100 last:border-0 transition-colors";
+                tr.onclick = () => openModal(row, item.sheetIndex);
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-bold text-slate-800 text-sm">#${row[idx.id] || '-'}</td>
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col"><span class="text-slate-900 font-black uppercase text-sm leading-tight">${row[idx.lry] || '-'}</span><span class="text-slate-400 text-[11px] font-bold">${row[idx.drv] || '-'}</span></div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col"><span class="text-teal-600 font-black text-sm">${row[idx.ltr] || '0'} L</span><span class="text-slate-400 text-[11px] font-bold">${row[idx.mil] || '0'} KM</span></div>
+                    </td>
+                    <td class="px-6 py-5 hidden sm:table-cell"><span class="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded uppercase tracking-tighter">${row[idx.stn] || 'Internal'}</span></td>
+                    <td class="px-6 py-5 text-right"><span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase ${getStatusColor(row[idx.fill] || 'Pending')}">${row[idx.fill] || 'Pending'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getStatusColor(s) {
+            if (s.toLowerCase().includes('completed')) return 'bg-teal-100 text-teal-700';
+            return 'bg-amber-100 text-amber-700';
+        }
+
+        function openModal(row, sIndex) {
+            currentRowIndex = sIndex;
+            const idx = {
+                ts: headers.findIndex(h => h.toLowerCase() === "timestamp"),
+                lry: headers.indexOf("LorryNumber"),
+                ltr: headers.indexOf("RequiredLiters"),
+                mil: headers.indexOf("Mileage"),
+                stn: headers.indexOf("StationType"),
+                fill: headers.indexOf("Filled Status"),
+                drv: headers.indexOf("DriverID")
+            };
+            const isFinished = (row[idx.fill] || "").toLowerCase().includes("completed");
+            document.getElementById("modalTimestamp").innerText = row[idx.ts] ? new Date(row[idx.ts]).toLocaleString() : "N/A";
+            document.getElementById("modalDetails").innerHTML = `
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Vehicle</p><p class="font-black text-xl uppercase text-slate-800">${row[idx.lry] || '-'}</p></div>
+                <div class="text-right"><p class="text-[10px] font-black text-slate-400 uppercase">Fuel Qty</p><p class="font-black text-teal-600 text-2xl">${row[idx.ltr] || '0'} L</p></div>
+                <div class="mt-4 pt-4 border-t border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase">Current Mileage</p><p class="font-bold text-slate-800 text-lg">${row[idx.mil] || '0'} KM</p></div>
+                <div class="mt-4 pt-4 border-t border-slate-100 text-right"><p class="text-[10px] font-black text-slate-400 uppercase">Station</p><p class="font-bold text-slate-500">${row[idx.stn] || 'Internal'}</p></div>
+                <div class="col-span-2 mt-2 pt-4 border-t border-slate-100"><p class="text-[10px] font-black text-slate-400 uppercase">Driver Assigned</p><p class="font-bold text-slate-700">${row[idx.drv] || '-'}</p></div>
+            `;
+            document.getElementById("actionArea").classList.toggle('hidden', isFinished);
+            document.getElementById("statusModal").classList.remove('hidden');
+        }
+
+        function submitFilling(status) {
+            const btn = document.getElementById('btnComplete');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Recording...`;
+
+            const p = new URLSearchParams();
+            p.append('action', 'updateFilledStatus'); 
+            p.append('row', currentRowIndex);
+            p.append('status', status);
+
+            fetch(scriptURL, { method: 'POST', body: p, mode: 'no-cors' })
+            .then(() => {
+                closeModal();
+                document.getElementById("successPopup").classList.remove('hidden');
+                loadData(); 
+            }).finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Confirm Filling Complete`;
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('filterDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('filterStatus').value = "All"; 
+            applyFilters();
+        }
+        function closeModal() { document.getElementById("statusModal").classList.add('hidden'); }
+        function closeSuccessModal() { document.getElementById("successPopup").classList.add('hidden'); }
+    </script>
+</body>
+</html>
